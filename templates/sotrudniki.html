@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Управление сотрудниками</h2>
+
+    <!-- Кнопка для добавления нового сотрудника -->
+    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addEmployeeModal">
+        Добавить сотрудника
+    </button>
+
+    <!-- Таблица сотрудников -->
+    <table class="table table-striped" id="employeesTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Имя</th>
+                <th>Фамилия</th>
+                <th>Должность</th>
+                <th>Отдел</th>
+                <th>Email</th>
+                <th>Телефон</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for сотрудник in сотрудники %}
+                <tr>
+                    <td>{{ сотрудник.id }}</td>
+                    <td>{{ сотрудник.имя }}</td>
+                    <td>{{ сотрудник.фамилия }}</td>
+                    <td>{{ сотрудник.должность or 'Не указано' }}</td>
+                    <td>{{ сотрудник.отдел or 'Не указано' }}</td>
+                    <td>{{ сотрудник.email or 'Не указано' }}</td>
+                    <td>{{ сотрудник.телефон or 'Не указано' }}</td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editEmployeeModal"
+                                    onclick="loadEmployeeData({{ сотрудник.id }}, '{{ сотрудник.имя }}', '{{ сотрудник.фамилия }}', '{{ сотрудник.должность }}', '{{ сотрудник.отдел }}', '{{ сотрудник.email }}', '{{ сотрудник.телефон }}')">
+                                Изменить
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteEmployee({{ сотрудник.id }})">
+                                Удалить
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Модальное окно для добавления сотрудника -->
+    <div class="modal fade" id="addEmployeeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить сотрудника</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addEmployeeForm">
+                        <div class="mb-3">
+                            <label class="form-label">Имя</label>
+                            <input type="text" class="form-control" name="имя" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Фамилия</label>
+                            <input type="text" class="form-control" name="фамилия" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Должность</label>
+                            <input type="text" class="form-control" name="должность">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Отдел</label>
+                            <input type="text" class="form-control" name="отдел">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Телефон</label>
+                            <input type="text" class="form-control" name="телефон">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="submitAddEmployee()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для редактирования сотрудника -->
+    <div class="modal fade" id="editEmployeeModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать сотрудника</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editEmployeeForm">
+                        <input type="hidden" id="editEmployeeId">
+                        <div class="mb-3">
+                            <label class="form-label">Имя</label>
+                            <input type="text" class="form-control" id="editFirstName" name="имя" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Фамилия</label>
+                            <input type="text" class="form-control" id="editLastName" name="фамилия" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Должность</label>
+                            <input type="text" class="form-control" id="editPosition" name="должность">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Отдел</label>
+                            <input type="text" class="form-control" id="editDepartment" name="отдел">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="editEmail" name="email">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Телефон</label>
+                            <input type="text" class="form-control" id="editPhone" name="телефон">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="submitEditEmployee()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

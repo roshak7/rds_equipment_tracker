@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Управление техникой</h2>
+
+    <!-- Кнопка для добавления новой техники -->
+    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addEquipmentModal">
+        Добавить технику
+    </button>
+
+    <!-- Таблица техники -->
+    <table class="table table-striped" id="equipmentTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Название</th>
+                <th>Модель</th>
+                <th>Производитель</th>
+                <th>Серийный номер</th>
+                <th>Дата покупки</th>
+                <th>Стоимость</th>
+                <th>Состояние</th>
+                <th>Статус</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for устройство in техника %}
+                <tr>
+                    <td>{{ устройство.id }}</td>
+                    <td>{{ устройство.название }}</td>
+                    <td>{{ устройство.модель }}</td>
+                    <td>{{ устройство.производитель }}</td>
+                    <td>{{ устройство.серийный_номер }}</td>
+                    <td>{{ устройство.дата_покупки }}</td>
+                    <td>{{ устройство.стоимость }}</td>
+                    <td>{{ устройство.состояние }}</td>
+                    <td>{{ устройство.статус }}</td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editEquipmentModal"
+                                    onclick="loadEquipmentData(
+                                        {{ устройство.id }},
+                                        '{{ устройство.название }}',
+                                        '{{ устройство.модель }}',
+                                        '{{ устройство.производитель }}',
+                                        '{{ устройство.серийный_номер }}',
+                                        '{{ устройство.дата_покупки }}',
+                                        '{{ устройство.стоимость }}',
+                                        '{{ устройство.состояние }}'
+                                    )">
+                                Изменить
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteEquipment({{ устройство.id }})">
+                                Удалить
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Модальное окно для добавления техники -->
+    <div class="modal fade" id="addEquipmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить технику</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addEquipmentForm">
+                        <div class="mb-3">
+                            <label class="form-label">Название</label>
+                            <input type="text" class="form-control" name="название" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Модель</label>
+                            <input type="text" class="form-control" name="модель" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Производитель</label>
+                            <input type="text" class="form-control" name="производитель" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Серийный номер</label>
+                            <input type="text" class="form-control" name="серийный_номер" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Дата покупки</label>
+                            <input type="date" class="form-control" name="дата_покупки" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Стоимость</label>
+                            <input type="number" step="0.01" class="form-control" name="стоимость" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Состояние</label>
+                            <select class="form-select" name="состояние" required>
+                                <option value="рабочее">Рабочее</option>
+                                <option value="неисправное">Неисправное</option>
+                                <option value="в ремонте">В ремонте</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="submitAddEquipment()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для редактирования техники -->
+    <div class="modal fade" id="editEquipmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать технику</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editEquipmentForm">
+                        <input type="hidden" id="editEquipmentId">
+                        <div class="mb-3">
+                            <label class="form-label">Название</label>
+                            <input type="text" class="form-control" id="editName" name="название" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Модель</label>
+                            <input type="text" class="form-control" id="editModel" name="модель" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Производитель</label>
+                            <input type="text" class="form-control" id="editManufacturer" name="производитель" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Серийный номер</label>
+                            <input type="text" class="form-control" id="editSerialNumber" name="серийный_номер" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Дата покупки</label>
+                            <input type="date" class="form-control" id="editPurchaseDate" name="дата_покупки" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Стоимость</label>
+                            <input type="number" step="0.01" class="form-control" id="editCost" name="стоимость" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Состояние</label>
+                            <select class="form-select" id="editCondition" name="состояние" required>
+                                <option value="рабочее">Рабочее</option>
+                                <option value="неисправное">Неисправное</option>
+                                <option value="в ремонте">В ремонте</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="submitEditEquipment()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

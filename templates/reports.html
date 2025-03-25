@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Отчеты</h2>
+
+    <!-- Кнопка экспорта в Excel -->
+    <button class="btn btn-success" onclick="exportToExcel()">Экспорт в Excel</button>
+
+    <!-- Таблица отчетов -->
+    <table class="table table-striped" id="reportsTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Сотрудник</th>
+                <th>Техника</th>
+                <th>Дата назначения</th>
+                <th>Дата возврата</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for назначение in назначения %}
+                <tr>
+                    <td>{{ назначение.id }}</td>
+                    <td>{{ назначение.сотрудник_имя }}</td>
+                    <td>{{ назначение.техника_название }}</td>
+                    <td>{{ назначение.дата_назначения }}</td>
+                    <td>{{ назначение.дата_возврата or 'Не возвращена' }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+<!-- Скрипт для экспорта в Excel -->
+<script>
+function exportToExcel() {
+    const table = document.getElementById('reportsTable');
+    const rows = table.querySelectorAll('tr');
+    let csvContent = "data:text/csv;charset=utf-8,";
+
+    // Преобразуем таблицу в CSV
+    rows.forEach(row => {
+        const rowData = [];
+        row.querySelectorAll('th, td').forEach(cell => {
+            rowData.push(cell.innerText);
+        });
+        csvContent += rowData.join(",") + "\r\n";
+    });
+
+    // Создаем ссылку для скачивания
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "отчет.csv");
+    document.body.appendChild(link);
+    link.click();
+}
+</script>

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Управление пользователями</h2>
+
+    <!-- Кнопка для добавления нового пользователя -->
+    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        Добавить пользователя
+    </button>
+
+    <!-- Таблица пользователей -->
+    <table class="table table-striped" id="usersTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Логин</th>
+                <th>Роль</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for пользователь in пользователи %}
+                <tr>
+                    <td>{{ пользователь.id }}</td>
+                    <td>{{ пользователь.username }}</td>
+                    <td>{{ пользователь.role }}</td>
+                    <td>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editUserModal"
+                                    onclick="loadUserData({{ пользователь.id }}, '{{ пользователь.username }}', '{{ пользователь.role }}')">
+                                Изменить
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteUser({{ пользователь.id }})">
+                                Удалить
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Модальное окно для добавления пользователя -->
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить пользователя</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addUserForm">
+                        <div class="mb-3">
+                            <label class="form-label">Логин</label>
+                            <input type="text" class="form-control" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Пароль</label>
+                            <input type="password" class="form-control" name="password" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Роль</label>
+                            <select class="form-select" name="role" required>
+                                <option value="admin">Администратор</option>
+                                <option value="user">Пользователь</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="submitAddUser()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для редактирования пользователя -->
+    <div class="modal fade" id="editUserModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Редактировать пользователя</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editUserForm">
+                        <input type="hidden" id="editUserId">
+                        <div class="mb-3">
+                            <label class="form-label">Логин</label>
+                            <input type="text" class="form-control" id="editUsername" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Пароль</label>
+                            <input type="password" class="form-control" id="editPassword" name="password" placeholder="Оставьте пустым, чтобы не менять">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Роль</label>
+                            <select class="form-select" id="editRole" name="role" required>
+                                <option value="admin">Администратор</option>
+                                <option value="user">Пользователь</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="submitEditUser()">Сохранить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
