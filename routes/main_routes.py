@@ -78,7 +78,9 @@ def прикрепить_технику():
 @main_bp.route('/')
 def index():
     conn = get_db_connection()
-    назначения = conn.execute('''
+
+    # Преобразуем sqlite3.Row в словари
+    назначения = [dict(row) for row in conn.execute('''
         SELECT назначения.id, 
                сотрудники.имя || ' ' || сотрудники.фамилия AS сотрудник,
                техника.название || ' (' || техника.серийный_номер || ')' AS техника,
@@ -89,10 +91,11 @@ def index():
         FROM назначения
         JOIN сотрудники ON назначения.сотрудник_id = сотрудники.id
         JOIN техника ON назначения.техника_id = техника.id
-    ''').fetchall()
-    
-    сотрудники = conn.execute('SELECT * FROM сотрудники').fetchall()
-    техника = conn.execute('SELECT * FROM техника').fetchall()
+    ''').fetchall()]
+
+    сотрудники = [dict(row) for row in conn.execute('SELECT * FROM сотрудники').fetchall()]
+    техника = [dict(row) for row in conn.execute('SELECT * FROM техника').fetchall()]
+
     conn.close()
-    
+
     return render_template('index.html', назначения=назначения, сотрудники=сотрудники, техника=техника)

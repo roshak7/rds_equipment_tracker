@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}Сотрудники - Система учета техники{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Сотрудники</h1>
+        <div>
+            <a href="{{ url_for('export_employees') }}" class="btn btn-success me-2">
+                <i class="bi bi-file-earmark-excel"></i> Экспорт в Excel
+            </a>
+            <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#importModal">
+                <i class="bi bi-file-earmark-arrow-up"></i> Импорт из Excel
+            </button>
+            <button class="btn btn-primary" onclick="openAddModal()">
+                <i class="fas fa-plus"></i> Добавить сотрудника
+            </button>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form id="filterForm" class="row g-3">
+                <div class="col-md-3">
+                    <label for="searchInput" class="form-label">Поиск</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="ФИО, должность, отдел...">
+                </div>
+                <div class="col-md-2">
+                    <label for="departmentFilter" class="form-label">Отдел</label>
+                    <select class="form-select" id="departmentFilter">
+                        <option value="">Все</option>
+                        {% for department in departments %}
+                        <option value="{{ department }}">{{ department }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="positionFilter" class="form-label">Должность</label>
+                    <select class="form-select" id="positionFilter">
+                        <option value="">Все</option>
+                        {% for position in positions %}
+                        <option value="{{ position }}">{{ position }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="equipmentFilter" class="form-label">Наличие техники</label>
+                    <select class="form-select" id="equipmentFilter">
+                        <option value="">Все</option>
+                        <option value="with">С техникой</option>
+                        <option value="without">Без техники</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="dateRangeFilter" class="form-label">Период работы</label>
+                    <div class="input-group">
+                        <input type="date" class="form-control" id="dateFrom">
+                        <span class="input-group-text">-</span>
+                        <input type="date" class="form-control" id="dateTo">
+                    </div>
+                </div>
+                <div class="col-12">
+                    <button type="button" class="btn btn-primary" id="applyFilters">
+                        <i class="bi bi-funnel"></i> Применить фильтры
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="resetFilters">
+                        <i class="bi bi-x-circle"></i> Сбросить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="employeesTable">
+                    <thead>
+                        <tr>
+                            <th>ФИО</th>
+                            <th>Должность</th>
+                            <th>Отдел</th>
+                            <th>Email</th>
+                            <th>Телефон</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in employees %}
+                        <tr>
+                            <td>{{ employee.фамилия }} {{ employee.имя }} {{ employee.отчество or '' }}</td>
+                            <td>{{ employee.должность }}</td>
+                            <td>{{ employee.отдел }}</td>
+                            <td>{{ employee.email }}</td>
+                            <td>{{ employee.телефон }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="editEmployee({{ employee.id }})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteEmployee({{ employee.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для добавления/редактирования сотрудника -->
+<div class="modal fade" id="employeeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Добавить сотрудника</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="employeeForm">
+                    <input type="hidden" id="employeeId">
+                    <div class="mb-3">
+                        <label class="form-label">Фамилия</label>
+                        <input type="text" class="form-control" id="lastName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Имя</label>
+                        <input type="text" class="form-control" id="firstName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Отчество</label>
+                        <input type="text" class="form-control" id="middleName">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Должность</label>
+                        <input type="text" class="form-control" id="position" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Отдел</label>
+                        <input type="text" class="form-control" id="department" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Телефон</label>
+                        <input type="tel" class="form-control" id="phone">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="saveEmployee()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно импорта -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Импорт сотрудников из Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('import_employees') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Выберите Excel файл</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        Файл должен содержать следующие колонки: Фамилия, Имя, Отчество, Должность, Отдел, Email, Телефон
+                    </div>
+                    <button type="submit" class="btn btn-primary">Импортировать</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let employeeModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    employeeModal = new bootstrap.Modal(document.getElementById('employeeModal'));
+
+    // Фильтрация таблицы
+    const table = document.getElementById('employeesTable');
+    const searchInput = document.getElementById('searchInput');
+    const departmentFilter = document.getElementById('departmentFilter');
+    const positionFilter = document.getElementById('positionFilter');
+    const equipmentFilter = document.getElementById('equipmentFilter');
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
+    const applyFilters = document.getElementById('applyFilters');
+    const resetFilters = document.getElementById('resetFilters');
+
+    function filterTable() {
+        const searchText = searchInput.value.toLowerCase();
+        const departmentValue = departmentFilter.value;
+        const positionValue = positionFilter.value;
+        const equipmentValue = equipmentFilter.value;
+        const fromDate = dateFrom.value;
+        const toDate = dateTo.value;
+
+        const rows = table.getElementsByTagName('tr');
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const cells = row.getElementsByTagName('td');
+            
+            const fullName = (cells[1].textContent + ' ' + cells[2].textContent + ' ' + cells[3].textContent).toLowerCase();
+            const position = cells[4].textContent.trim();
+            const department = cells[5].textContent.trim();
+            const hasEquipment = cells[8].textContent.trim() !== '-';
+
+            const matchesSearch = fullName.includes(searchText) || 
+                                position.toLowerCase().includes(searchText) || 
+                                department.toLowerCase().includes(searchText);
+            const matchesDepartment = !departmentValue || department === departmentValue;
+            const matchesPosition = !positionValue || position === positionValue;
+            const matchesEquipment = !equipmentValue || 
+                                   (equipmentValue === 'with' && hasEquipment) || 
+                                   (equipmentValue === 'without' && !hasEquipment);
+            const matchesDate = (!fromDate || cells[7].textContent >= fromDate) && 
+                              (!toDate || cells[7].textContent <= toDate);
+
+            row.style.display = matchesSearch && matchesDepartment && 
+                              matchesPosition && matchesEquipment && 
+                              matchesDate ? '' : 'none';
+        }
+    }
+
+    applyFilters.addEventListener('click', filterTable);
+    
+    resetFilters.addEventListener('click', function() {
+        searchInput.value = '';
+        departmentFilter.value = '';
+        positionFilter.value = '';
+        equipmentFilter.value = '';
+        dateFrom.value = '';
+        dateTo.value = '';
+        filterTable();
+    });
+
+    // Автоматическая фильтрация при вводе в поиск
+    searchInput.addEventListener('input', filterTable);
+});
+
+function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Добавить сотрудника';
+    document.getElementById('employeeForm').reset();
+    document.getElementById('employeeId').value = '';
+    employeeModal.show();
+}
+
+function editEmployee(id) {
+    document.getElementById('modalTitle').textContent = 'Редактировать сотрудника';
+    // Здесь будет AJAX запрос для получения данных сотрудника
+    fetch(`/employees/${id}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('employeeId').value = data.id;
+            document.getElementById('lastName').value = data.фамилия;
+            document.getElementById('firstName').value = data.имя;
+            document.getElementById('middleName').value = data.отчество || '';
+            document.getElementById('position').value = data.должность;
+            document.getElementById('department').value = data.отдел;
+            document.getElementById('email').value = data.email || '';
+            document.getElementById('phone').value = data.телефон || '';
+            employeeModal.show();
+        });
+}
+
+function saveEmployee() {
+    const formData = {
+        id: document.getElementById('employeeId').value,
+        фамилия: document.getElementById('lastName').value,
+        имя: document.getElementById('firstName').value,
+        отчество: document.getElementById('middleName').value,
+        должность: document.getElementById('position').value,
+        отдел: document.getElementById('department').value,
+        email: document.getElementById('email').value,
+        телефон: document.getElementById('phone').value
+    };
+
+    fetch('/employees', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Создаем уведомление
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success alert-dismissible fade show';
+            alert.role = 'alert';
+            alert.innerHTML = `
+                ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.card'));
+            
+            // Закрываем модальное окно
+            employeeModal.hide();
+            
+            // Перезагружаем страницу через 2 секунды
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            // Создаем уведомление об ошибке
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger alert-dismissible fade show';
+            alert.role = 'alert';
+            alert.innerHTML = `
+                ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.card'));
+        }
+    });
+}
+
+function deleteEmployee(id) {
+    if (confirm('Вы уверены, что хотите удалить этого сотрудника?')) {
+        fetch(`/employees/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Ошибка при удалении');
+            }
+        });
+    }
+}
+</script>
+{% endblock %} 

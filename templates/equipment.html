@@ -1,0 +1,537 @@
+{% extends "base.html" %}
+
+{% block title %}Техника - Система учета техники{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Техника</h1>
+        <div>
+            <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#importWarehouseModal">
+                <i class="bi bi-file-earmark-excel"></i> Импорт из склада
+            </button>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#equipmentModal">
+                <i class="bi bi-plus-circle"></i> Добавить технику
+            </button>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form id="filterForm" class="row g-3">
+                <div class="col-md-3">
+                    <label for="searchInput" class="form-label">Поиск</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Название, модель, серийный номер...">
+                </div>
+                <div class="col-md-2">
+                    <label for="statusFilter" class="form-label">Статус</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">Все</option>
+                        <option value="свободна">Свободна</option>
+                        <option value="назначена">Назначена</option>
+                        <option value="в ремонте">В ремонте</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="conditionFilter" class="form-label">Состояние</label>
+                    <select class="form-select" id="conditionFilter">
+                        <option value="">Все</option>
+                        <option value="рабочее">Рабочее</option>
+                        <option value="требует обслуживания">Требует обслуживания</option>
+                        <option value="неисправное">Неисправное</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="manufacturerFilter" class="form-label">Производитель</label>
+                    <select class="form-select" id="manufacturerFilter">
+                        <option value="">Все</option>
+                        {% for manufacturer in manufacturers %}
+                        <option value="{{ manufacturer }}">{{ manufacturer }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="dateRangeFilter" class="form-label">Период приобретения</label>
+                    <div class="input-group">
+                        <input type="date" class="form-control" id="dateFrom">
+                        <span class="input-group-text">-</span>
+                        <input type="date" class="form-control" id="dateTo">
+                    </div>
+                </div>
+                <div class="col-12">
+                    <button type="button" class="btn btn-primary" id="applyFilters">
+                        <i class="bi bi-funnel"></i> Применить фильтры
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="resetFilters">
+                        <i class="bi bi-x-circle"></i> Сбросить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="post" id="equipmentForm">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="equipmentTable">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="checkbox" class="form-check-input" id="selectAll">
+                                </th>
+                                <th>Название</th>
+                                <th>Модель</th>
+                                <th>Производитель</th>
+                                <th>Серийный номер</th>
+                                <th>Состояние</th>
+                                <th>Статус</th>
+                                <th>Текущий владелец</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for equipment in equipment_list %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="form-check-input equipment-checkbox" 
+                                           name="equipment_ids[]" value="{{ equipment.id }}">
+                                </td>
+                                <td>{{ equipment.название }}</td>
+                                <td>{{ equipment.модель }}</td>
+                                <td>{{ equipment.производитель }}</td>
+                                <td>{{ equipment.серийный_номер }}</td>
+                                <td>
+                                    <span class="badge {% if equipment.состояние == 'рабочее' %}bg-success
+                                                      {% elif equipment.состояние == 'требует обслуживания' %}bg-warning
+                                                      {% else %}bg-danger{% endif %}">
+                                        {{ equipment.состояние }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge {% if equipment.статус == 'свободна' %}bg-success
+                                                      {% elif equipment.статус == 'назначена' %}bg-primary
+                                                      {% elif equipment.статус == 'в ремонте' %}bg-warning
+                                                      {% else %}bg-secondary{% endif %}">
+                                        {{ equipment.статус }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if equipment.текущий_владелец_id %}
+                                        {{ equipment.текущий_владелец }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{{ url_for('equipment_qr', equipment_id=equipment.id) }}" 
+                                           class="btn btn-sm btn-info" title="QR-код">
+                                            <i class="bi bi-qr-code"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-primary edit-equipment" 
+                                                data-id="{{ equipment.id }}" title="Редактировать">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        {% if equipment.статус == 'свободна' %}
+                                        <button type="button" class="btn btn-sm btn-warning send-to-maintenance" 
+                                                data-id="{{ equipment.id }}" title="Отправить на обслуживание">
+                                            <i class="bi bi-tools"></i>
+                                        </button>
+                                        {% elif equipment.статус == 'в ремонте' %}
+                                        <button type="button" class="btn btn-sm btn-success complete-maintenance" 
+                                                data-id="{{ equipment.id }}" title="Завершить обслуживание">
+                                            <i class="bi bi-check-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-danger delete-equipment" 
+                                                data-id="{{ equipment.id }}" title="Удалить">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления/редактирования техники -->
+<div class="modal fade" id="equipmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Добавить технику</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="equipmentForm" method="post">
+                    <input type="hidden" id="equipmentId">
+                    <div class="mb-3">
+                        <label for="название" class="form-label">Название</label>
+                        <input type="text" class="form-control" id="название" name="название" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="модель" class="form-label">Модель</label>
+                        <input type="text" class="form-control" id="модель" name="модель" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="производитель" class="form-label">Производитель</label>
+                        <input type="text" class="form-control" id="производитель" name="производитель" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="серийный_номер" class="form-label">Серийный номер</label>
+                        <input type="text" class="form-control" id="серийный_номер" name="серийный_номер" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="дата_приобретения" class="form-label">Дата приобретения</label>
+                        <input type="date" class="form-control" id="дата_приобретения" name="дата_приобретения" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="гарантийный_срок" class="form-label">Гарантийный срок</label>
+                        <input type="date" class="form-control" id="гарантийный_срок" name="гарантийный_срок" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="состояние" class="form-label">Состояние</label>
+                        <select class="form-select" id="состояние" name="состояние" required>
+                            <option value="рабочее">Рабочее</option>
+                            <option value="требует обслуживания">Требует обслуживания</option>
+                            <option value="неисправное">Неисправное</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно отправки на обслуживание -->
+<div class="modal fade" id="maintenanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Отправка на обслуживание</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="maintenanceForm">
+                    <input type="hidden" id="maintenanceEquipmentId">
+                    <div class="mb-3">
+                        <label for="тип_обслуживания" class="form-label">Тип обслуживания</label>
+                        <select class="form-select" id="тип_обслуживания" required>
+                            <option value="плановое">Плановое</option>
+                            <option value="внеплановое">Внеплановое</option>
+                            <option value="ремонт">Ремонт</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="описание" class="form-label">Описание</label>
+                        <textarea class="form-control" id="описание" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="исполнитель" class="form-label">Исполнитель</label>
+                        <input type="text" class="form-control" id="исполнитель" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveMaintenance">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно завершения обслуживания -->
+<div class="modal fade" id="completeMaintenanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Завершение обслуживания</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="completeMaintenanceForm">
+                    <input type="hidden" id="completeMaintenanceEquipmentId">
+                    <div class="mb-3">
+                        <label for="следующая_дата_обслуживания" class="form-label">Следующая дата обслуживания</label>
+                        <input type="date" class="form-control" id="следующая_дата_обслуживания">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveCompleteMaintenance">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно импорта -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Импорт техники из Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('import_equipment') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Выберите Excel файл</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        Файл должен содержать следующие колонки: Название, Модель, Производитель, Серийный номер, 
+                        Дата приобретения, Гарантийный срок, Состояние, Статус
+                    </div>
+                    <button type="submit" class="btn btn-primary">Импортировать</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Кнопки управления -->
+<div class="mb-3">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importWarehouseModal">
+        <i class="bi bi-file-earmark-excel"></i> Импорт из склада
+    </button>
+    <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#importEquipmentModal">
+        <i class="bi bi-file-earmark-excel"></i> Импорт техники
+    </button>
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#exportEquipmentModal">
+        <i class="bi bi-file-earmark-excel"></i> Экспорт в Excel
+    </button>
+    <button type="button" class="btn btn-secondary" id="generateQrBtn">
+        <i class="bi bi-qr-code"></i> Создать QR-коды
+    </button>
+</div>
+
+<!-- Модальное окно для импорта из склада -->
+<div class="modal fade" id="importWarehouseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Импорт данных из склада</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('import_warehouse') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="warehouseFile" class="form-label">Выберите файл склад.xls</label>
+                        <input type="file" class="form-control" id="warehouseFile" name="file" accept=".xls" required>
+                        <div class="form-text">
+                            Файл должен содержать следующие колонки:<br>
+                            - Категория<br>
+                            - Название<br>
+                            - Модель<br>
+                            - Производитель<br>
+                            - Серийный номер<br>
+                            - Дата приобретения<br>
+                            - Гарантийный срок<br>
+                            - Состояние
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Импортировать</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка выбора всех элементов
+    document.getElementById('selectAll').addEventListener('change', function() {
+        document.querySelectorAll('.equipment-checkbox').forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // Генерация QR-кодов для выбранных элементов
+    document.getElementById('generateQrBtn').addEventListener('click', function() {
+        const form = document.getElementById('equipmentForm');
+        form.action = "{{ url_for('batch_qr') }}";
+        form.method = 'post';
+        form.submit();
+    });
+
+    // Обработка добавления/редактирования техники
+    const equipmentModal = new bootstrap.Modal(document.getElementById('equipmentModal'));
+    
+    // Открытие модального окна для добавления
+    document.querySelector('.btn-success').addEventListener('click', function() {
+        document.getElementById('modalTitle').textContent = 'Добавить технику';
+        document.getElementById('equipmentForm').reset();
+        document.getElementById('equipmentId').value = '';
+        equipmentModal.show();
+    });
+
+    // Открытие модального окна для редактирования
+    document.querySelectorAll('.edit-equipment').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = this.dataset.id;
+            document.getElementById('modalTitle').textContent = 'Редактировать технику';
+            // Здесь будет AJAX запрос для получения данных техники
+            fetch(`/equipment/${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('equipmentId').value = data.id;
+                    document.getElementById('название').value = data.название;
+                    document.getElementById('модель').value = data.модель;
+                    document.getElementById('производитель').value = data.производитель;
+                    document.getElementById('серийный_номер').value = data.серийный_номер;
+                    document.getElementById('дата_приобретения').value = data.дата_приобретения;
+                    document.getElementById('гарантийный_срок').value = data.гарантийный_срок;
+                    document.getElementById('состояние').value = data.состояние;
+                    equipmentModal.show();
+                });
+        });
+    });
+
+    // Обработка отправки на обслуживание
+    const maintenanceModal = new bootstrap.Modal(document.getElementById('maintenanceModal'));
+    
+    document.querySelectorAll('.send-to-maintenance').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = this.dataset.id;
+            document.getElementById('maintenanceEquipmentId').value = id;
+            maintenanceModal.show();
+        });
+    });
+
+    // Сохранение данных об обслуживании
+    document.getElementById('saveMaintenance').addEventListener('click', function() {
+        const form = document.getElementById('maintenanceForm');
+        const formData = new FormData(form);
+        const id = document.getElementById('maintenanceEquipmentId').value;
+
+        fetch(`/equipment/${id}/maintenance`, {
+            method: 'POST',
+            body: formData
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка при отправке техники на обслуживание');
+            }
+        });
+    });
+
+    // Обработка завершения обслуживания
+    const completeMaintenanceModal = new bootstrap.Modal(document.getElementById('completeMaintenanceModal'));
+    
+    document.querySelectorAll('.complete-maintenance').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = this.dataset.id;
+            document.getElementById('completeMaintenanceEquipmentId').value = id;
+            completeMaintenanceModal.show();
+        });
+    });
+
+    // Сохранение данных о завершении обслуживания
+    document.getElementById('saveCompleteMaintenance').addEventListener('click', function() {
+        const form = document.getElementById('completeMaintenanceForm');
+        const formData = new FormData(form);
+        const id = document.getElementById('completeMaintenanceEquipmentId').value;
+
+        fetch(`/equipment/${id}/complete_maintenance`, {
+            method: 'POST',
+            body: formData
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Ошибка при завершении обслуживания');
+            }
+        });
+    });
+
+    // Обработка удаления
+    document.querySelectorAll('.delete-equipment').forEach(button => {
+        button.addEventListener('click', function() {
+            if (confirm('Вы уверены, что хотите удалить эту технику?')) {
+                const id = this.dataset.id;
+                // Здесь должен быть AJAX-запрос для удаления техники
+            }
+        });
+    });
+
+    // Фильтрация таблицы
+    const table = document.getElementById('equipmentTable');
+    const searchInput = document.getElementById('searchInput');
+    const statusFilter = document.getElementById('statusFilter');
+    const conditionFilter = document.getElementById('conditionFilter');
+    const manufacturerFilter = document.getElementById('manufacturerFilter');
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
+    const applyFilters = document.getElementById('applyFilters');
+    const resetFilters = document.getElementById('resetFilters');
+
+    function filterTable() {
+        const searchText = searchInput.value.toLowerCase();
+        const statusValue = statusFilter.value;
+        const conditionValue = conditionFilter.value;
+        const manufacturerValue = manufacturerFilter.value;
+        const fromDate = dateFrom.value;
+        const toDate = dateTo.value;
+
+        const rows = table.getElementsByTagName('tr');
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const cells = row.getElementsByTagName('td');
+            
+            const name = cells[1].textContent.toLowerCase();
+            const model = cells[2].textContent.toLowerCase();
+            const serial = cells[4].textContent.toLowerCase();
+            const status = cells[6].textContent.trim();
+            const condition = cells[5].textContent.trim();
+            const manufacturer = cells[3].textContent.trim();
+            const purchaseDate = cells[7].textContent;
+
+            const matchesSearch = name.includes(searchText) || 
+                                model.includes(searchText) || 
+                                serial.includes(searchText);
+            const matchesStatus = !statusValue || status === statusValue;
+            const matchesCondition = !conditionValue || condition === conditionValue;
+            const matchesManufacturer = !manufacturerValue || manufacturer === manufacturerValue;
+            const matchesDate = (!fromDate || purchaseDate >= fromDate) && 
+                              (!toDate || purchaseDate <= toDate);
+
+            row.style.display = matchesSearch && matchesStatus && 
+                              matchesCondition && matchesManufacturer && 
+                              matchesDate ? '' : 'none';
+        }
+    }
+
+    applyFilters.addEventListener('click', filterTable);
+    
+    resetFilters.addEventListener('click', function() {
+        searchInput.value = '';
+        statusFilter.value = '';
+        conditionFilter.value = '';
+        manufacturerFilter.value = '';
+        dateFrom.value = '';
+        dateTo.value = '';
+        filterTable();
+    });
+
+    // Автоматическая фильтрация при вводе в поиск
+    searchInput.addEventListener('input', filterTable);
+});
+</script>
+{% endblock %} 

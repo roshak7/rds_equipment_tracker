@@ -1,0 +1,687 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Ключевые показатели -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Всего техники</h6>
+                            <h3 class="mt-1 mb-0">{{ equipment_stats.overall.total }}</h3>
+                            <small>Рабочих: {{ equipment_stats.overall.working }}</small>
+                        </div>
+                        <i class="bi bi-tools display-6 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Всего сотрудников</h6>
+                            <h3 class="mt-1 mb-0">{{ employee_stats.overall.total }}</h3>
+                            <small>Активных: {{ employee_stats.overall.active }}</small>
+                        </div>
+                        <i class="bi bi-people display-6 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark h-100">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Активных назначений</h6>
+                            <h3 class="mt-1 mb-0">{{ assignment_stats.overall.active }}</h3>
+                            <small>Завершенных: {{ assignment_stats.overall.completed }}</small>
+                        </div>
+                        <i class="bi bi-person-badge display-6 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Производителей</h6>
+                            <h3 class="mt-1 mb-0">{{ equipment_stats.manufacturers|length }}</h3>
+                            <small>Типов техники: {{ equipment_stats.types|length }}</small>
+                        </div>
+                        <i class="bi bi-building display-6 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Фильтры -->
+    <div class="card mb-3 shadow-sm">
+        <div class="card-header bg-white border-bottom py-2">
+            <h5 class="card-title mb-0">Фильтры</h5>
+        </div>
+        <div class="card-body py-2">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <div class="form-group mb-0">
+                        <label for="period" class="form-label small">Период</label>
+                        <select class="form-select form-select-sm" id="period">
+                            <option value="7">Последние 7 дней</option>
+                            <option value="30" selected>Последние 30 дней</option>
+                            <option value="90">Последние 90 дней</option>
+                            <option value="365">Последний год</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group mb-0">
+                        <label for="department" class="form-label small">Отдел</label>
+                        <select class="form-select form-select-sm" id="department">
+                            <option value="">Все отделы</option>
+                            {% for dept in employee_stats.departments %}
+                            <option value="{{ dept.отдел }}">{{ dept.отдел }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group mb-0">
+                        <label for="equipment_type" class="form-label small">Тип техники</label>
+                        <select class="form-select form-select-sm" id="equipment_type">
+                            <option value="">Все типы</option>
+                            {% for type in equipment_stats.types %}
+                            <option value="{{ type.тип }}">{{ type.тип }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group mb-0">
+                        <label class="form-label small">&nbsp;</label>
+                        <button class="btn btn-primary btn-sm w-100" onclick="applyFilters()">
+                            <i class="bi bi-funnel me-1"></i>Применить фильтры
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Графики -->
+    <div class="row mb-3">
+        <!-- Состояние техники -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white border-bottom py-2">
+                    <h5 class="card-title mb-0 small">Состояние техники</h5>
+                </div>
+                <div class="card-body py-2">
+                    <div style="height: 200px;">
+                        <canvas id="equipmentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Производители -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white border-bottom py-2">
+                    <h5 class="card-title mb-0 small">Топ производителей</h5>
+                </div>
+                <div class="card-body py-2">
+                    <div style="height: 200px;">
+                        <canvas id="manufacturerChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Должности -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white border-bottom py-2">
+                    <h5 class="card-title mb-0 small">Распределение по должностям</h5>
+                </div>
+                <div class="card-body py-2">
+                    <div style="height: 200px;">
+                        <canvas id="positionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Графики и таблицы -->
+    <div class="row mb-3">
+        <!-- Распределение по отделам -->
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white border-bottom py-2">
+                    <h5 class="card-title mb-0 small">Распределение по отделам</h5>
+                </div>
+                <div class="card-body py-2">
+                    <div style="height: 200px;">
+                        <canvas id="departmentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Динамика назначений -->
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white border-bottom py-2">
+                    <h5 class="card-title mb-0 small">Динамика назначений</h5>
+                </div>
+                <div class="card-body py-2">
+                    <div style="height: 200px;">
+                        <canvas id="assignmentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблицы статистики -->
+    <div class="row mb-3">
+        <!-- Статистика по отделам -->
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white border-bottom py-2">
+                    <h5 class="card-title mb-0 small">Статистика по отделам</h5>
+                </div>
+                <div class="card-body py-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Отдел</th>
+                                    <th>Сотрудников</th>
+                                    <th>Техники</th>
+                                    <th>Назначений</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dept in employee_stats.departments %}
+                                <tr>
+                                    <td>{{ dept.отдел }}</td>
+                                    <td>{{ dept.count }}</td>
+                                    <td>{{ dept.equipment_count }}</td>
+                                    <td>{{ dept.assignments_count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Статистика по технике -->
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white border-bottom py-2">
+                    <h5 class="card-title mb-0 small">Статистика по технике</h5>
+                </div>
+                <div class="card-body py-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Производитель</th>
+                                    <th>Количество</th>
+                                    <th>Рабочих</th>
+                                    <th>% работоспособности</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for manuf in equipment_stats.manufacturers %}
+                                <tr>
+                                    <td>{{ manuf.производитель }}</td>
+                                    <td>{{ manuf.count }}</td>
+                                    <td>{{ manuf.working_count }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 15px;">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                 style="width: {{ (manuf.working_count / manuf.count * 100 if manuf.count > 0 else 0)|round|int }}%;" 
+                                                 aria-valuenow="{{ (manuf.working_count / manuf.count * 100 if manuf.count > 0 else 0)|round|int }}" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100">
+                                                {{ "%.1f"|format(manuf.working_count / manuf.count * 100 if manuf.count > 0 else 0) }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Аналитика -->
+    <div class="row">
+        <!-- Эффективность использования техники -->
+        <div class="col-12 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom py-2">
+                    <h5 class="card-title mb-0 small">Эффективность использования техники</h5>
+                </div>
+                <div class="card-body py-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0" id="efficiencyTable">
+                            <thead>
+                                <tr>
+                                    <th>Наименование</th>
+                                    <th>Тип</th>
+                                    <th>Коэффициент использования</th>
+                                    <th>Среднее время использования (дни)</th>
+                                    <th>Коэффициент ротации</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Анализ стоимости -->
+        <div class="col-12 mb-3">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom py-2">
+                    <h5 class="card-title mb-0 small">Анализ стоимости владения техникой</h5>
+                </div>
+                <div class="card-body py-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0" id="costTable">
+                            <thead>
+                                <tr>
+                                    <th>Наименование</th>
+                                    <th>Тип</th>
+                                    <th>Общая стоимость владения</th>
+                                    <th>Средняя стоимость в день</th>
+                                    <th>ROI (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Анализ обслуживания -->
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom py-2">
+                    <h5 class="card-title mb-0 small">Анализ обслуживания и ремонтов</h5>
+                </div>
+                <div class="card-body py-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0" id="maintenanceTable">
+                            <thead>
+                                <tr>
+                                    <th>Тип техники</th>
+                                    <th>Всего единиц</th>
+                                    <th>Частота обслуживания</th>
+                                    <th>Частота ремонтов</th>
+                                    <th>Средняя стоимость обслуживания</th>
+                                    <th>Средняя стоимость ремонта</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Подключаем Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Функция для применения фильтров
+function applyFilters() {
+    const period = document.getElementById('period').value;
+    const department = document.getElementById('department').value;
+    const equipmentType = document.getElementById('equipment_type').value;
+    
+    // Здесь будет AJAX запрос для обновления данных
+    fetch(`/api/statistics?period=${period}&department=${department}&equipment_type=${equipmentType}`)
+        .then(response => response.json())
+        .then(data => {
+            updateCharts(data);
+            loadEfficiencyStats();
+            loadCostStats();
+            loadMaintenanceStats();
+        });
+}
+
+// Функция для обновления графиков
+function updateCharts(data) {
+    // Обновляем график состояния техники
+    equipmentChart.data.datasets[0].data = [
+        data.equipment_stats.overall.working,
+        data.equipment_stats.overall.maintenance_required,
+        data.equipment_stats.overall.faulty
+    ];
+    equipmentChart.update();
+    
+    // Обновляем график производителей
+    manufacturerChart.data.labels = data.equipment_stats.manufacturers.map(m => m.производитель);
+    manufacturerChart.data.datasets[0].data = data.equipment_stats.manufacturers.map(m => m.count);
+    manufacturerChart.update();
+    
+    // Обновляем график отделов
+    departmentChart.data.labels = data.employee_stats.departments.map(d => d.отдел);
+    departmentChart.data.datasets[0].data = data.employee_stats.departments.map(d => d.count);
+    departmentChart.update();
+    
+    // Обновляем график должностей
+    positionChart.data.labels = data.employee_stats.positions.map(p => p.должность);
+    positionChart.data.datasets[0].data = data.employee_stats.positions.map(p => p.count);
+    positionChart.update();
+    
+    // Обновляем график назначений
+    assignmentChart.data.labels = data.assignment_stats.monthly.map(m => m.month);
+    assignmentChart.data.datasets[0].data = data.assignment_stats.monthly.map(m => m.count);
+    assignmentChart.update();
+}
+
+// Обновляем настройки графиков для лучшей визуализации
+const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            position: 'right',
+            labels: {
+                padding: 10,
+                font: {
+                    size: 11
+                }
+            }
+        },
+        tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 8,
+            titleFont: {
+                size: 12
+            },
+            bodyFont: {
+                size: 11
+            }
+        }
+    },
+    animation: {
+        duration: 500,
+        easing: 'easeInOutQuart'
+    }
+};
+
+// График состояния техники
+const equipmentChart = new Chart(document.getElementById('equipmentChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Рабочее', 'Требует обслуживания', 'Неисправное'],
+        datasets: [{
+            data: [
+                {{ equipment_stats.overall.working }},
+                {{ equipment_stats.overall.maintenance_required }},
+                {{ equipment_stats.overall.faulty }}
+            ],
+            backgroundColor: ['#2ecc71', '#f1c40f', '#e74c3c'],
+            borderWidth: 0,
+            hoverOffset: 4
+        }]
+    },
+    options: {
+        ...chartOptions,
+        cutout: '70%'
+    }
+});
+
+// График производителей
+const manufacturerChart = new Chart(document.getElementById('manufacturerChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ equipment_stats.manufacturers|map(attribute='производитель')|list|tojson }},
+        datasets: [{
+            label: 'Количество',
+            data: {{ equipment_stats.manufacturers|map(attribute='count')|list|tojson }},
+            backgroundColor: '#3498db',
+            borderRadius: 5
+        }]
+    },
+    options: {
+        ...chartOptions,
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    display: true,
+                    drawBorder: false
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+
+// График отделов
+const departmentChart = new Chart(document.getElementById('departmentChart'), {
+    type: 'bar',
+    data: {
+        labels: {{ employee_stats.departments|map(attribute='отдел')|list|tojson }},
+        datasets: [{
+            label: 'Количество сотрудников',
+            data: {{ employee_stats.departments|map(attribute='count')|list|tojson }},
+            backgroundColor: '#9b59b6',
+            borderRadius: 5
+        }]
+    },
+    options: {
+        ...chartOptions,
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    display: true,
+                    drawBorder: false
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+
+// График должностей
+const positionChart = new Chart(document.getElementById('positionChart'), {
+    type: 'doughnut',
+    data: {
+        labels: {{ employee_stats.positions|map(attribute='должность')|list|tojson }},
+        datasets: [{
+            data: {{ employee_stats.positions|map(attribute='count')|list|tojson }},
+            backgroundColor: ['#1abc9c', '#3498db', '#9b59b6', '#f1c40f', '#e74c3c'],
+            borderWidth: 0,
+            hoverOffset: 4
+        }]
+    },
+    options: {
+        ...chartOptions,
+        cutout: '70%'
+    }
+});
+
+// График назначений
+const assignmentChart = new Chart(document.getElementById('assignmentChart'), {
+    type: 'line',
+    data: {
+        labels: {{ assignment_stats.monthly|map(attribute='month')|list|tojson }},
+        datasets: [{
+            label: 'Количество назначений',
+            data: {{ assignment_stats.monthly|map(attribute='count')|list|tojson }},
+            borderColor: '#3498db',
+            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointRadius: 4,
+            pointHoverRadius: 6
+        }]
+    },
+    options: {
+        ...chartOptions,
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    display: true,
+                    drawBorder: false
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+
+// Функция для загрузки данных эффективности
+function loadEfficiencyStats() {
+    fetch('/api/statistics/efficiency?period=' + currentPeriod + '&department=' + currentDepartment)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#efficiencyTable tbody');
+            tbody.innerHTML = '';
+            
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.наименование}</td>
+                    <td>${item.тип}</td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: ${item.utilization_rate}%;" 
+                                 aria-valuenow="${item.utilization_rate}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                ${item.utilization_rate}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>${item.avg_usage_days}</td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: ${item.rotation_rate}%;" 
+                                 aria-valuenow="${item.rotation_rate}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                ${item.rotation_rate}%
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Ошибка загрузки данных эффективности:', error));
+}
+
+// Функция для загрузки данных стоимости
+function loadCostStats() {
+    fetch('/api/statistics/costs?period=' + currentPeriod + '&department=' + currentDepartment)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#costTable tbody');
+            tbody.innerHTML = '';
+            
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.наименование}</td>
+                    <td>${item.тип}</td>
+                    <td>${item.total_ownership_cost.toLocaleString()} ₽</td>
+                    <td>${item.total_daily_cost.toLocaleString()} ₽</td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: ${item.roi}%;" 
+                                 aria-valuenow="${item.roi}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                ${item.roi}%
+                            </div>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Ошибка загрузки данных стоимости:', error));
+}
+
+// Функция для загрузки данных обслуживания
+function loadMaintenanceStats() {
+    fetch('/api/statistics/maintenance?period=' + currentPeriod + '&department=' + currentDepartment)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#maintenanceTable tbody');
+            tbody.innerHTML = '';
+            
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.тип}</td>
+                    <td>${item.total_equipment}</td>
+                    <td>${item.maintenance_frequency}</td>
+                    <td>${item.repair_frequency}</td>
+                    <td>${item.avg_maintenance_cost.toLocaleString()} ₽</td>
+                    <td>${item.avg_repair_cost.toLocaleString()} ₽</td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Ошибка загрузки данных обслуживания:', error));
+}
+
+// Добавляем вызовы при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // ... existing code ...
+    
+    // Добавляем вызовы новых функций
+    loadEfficiencyStats();
+    loadCostStats();
+    loadMaintenanceStats();
+});
+</script>
+{% endblock %} 

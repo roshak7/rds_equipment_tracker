@@ -1,148 +1,211 @@
 {% extends "base.html" %}
 
+{% block title %}Главная - Система учета техники{% endblock %}
+
 {% block content %}
-    <!-- Кнопка для открытия модального окна -->
-    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#assignEquipmentModal">
-        Прикрепить технику
-    </button>
-
-    <!-- Фильтры -->
-    <div class="row mb-3">
-        <div class="col-md-2">
-            <label class="form-label">Сотрудник</label>
-            <select class="form-select filter" id="filterEmployee">
-                <option value="">Все сотрудники</option>
-                {% for сотрудник in сотрудники %}
-                    <option value="{{ сотрудник['id'] }}">{{ сотрудник['имя'] }} {{ сотрудник['фамилия'] }}</option>
-                {% else %}
-                    <option disabled>Нет доступных сотрудников</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Техника</label>
-            <select class="form-select filter" id="filterEquipment">
-                <option value="">Вся техника</option>
-                {% for техника in техника %}
-                    <option value="{{ техника['id'] }}">{{ техника['название'] }} ({{ техника['серийный_номер'] }})</option>
-                {% else %}
-                    <option disabled>Нет доступной техники</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Дата назначения</label>
-            <input type="date" class="form-control filter" id="filterAssignmentDate">
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Дата возврата</label>
-            <input type="date" class="form-control filter" id="filterReturnDate">
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Состояние</label>
-            <select class="form-select filter" id="filterCondition">
-                <option value="">Все состояния</option>
-                <option value="Рабочее">Рабочее</option>
-                <option value="Неисправное">Неисправное</option>
-                <option value="На ремонте">На ремонте</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Статус</label>
-            <select class="form-select filter" id="filterStatus">
-                <option value="">Все статусы</option>
-                <option value="Доступна">Доступна</option>
-                <option value="Недоступна">Недоступна</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- Таблица аналитики учета техники -->
-    <table class="table table-striped" id="analyticsTable">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Сотрудник</th>
-                <th>Техника</th>
-                <th>Дата назначения</th>
-                <th>Дата возврата</th>
-                <th>Состояние</th>
-                <th>Статус</th>
-                <th>Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for назначение in назначения %}
-                <tr data-employee="{{ назначение['сотрудник_id'] }}"
-                    data-equipment="{{ назначение['техника_id'] }}"
-                    data-assignment-date="{{ назначение['дата_назначения'] }}"
-                    data-return-date="{{ назначение['дата_возврата'] or '' }}"
-                    data-condition="{{ назначение['состояние'] }}"
-                    data-status="{{ назначение['статус'] }}">
-                    <td>{{ назначение['id'] }}</td>
-                    <td>{{ назначение['сотрудник'] }}</td>
-                    <td>{{ назначение['техника'] }}</td>
-                    <td>{{ назначение['дата_назначения'] }}</td>
-                    <td>{{ назначение['дата_возврата'] or 'Не возвращено' }}</td>
-                    <td>{{ назначение['состояние'] }}</td>
-                    <td>{{ назначение['статус'] }}</td>
-                    <td>
-                        <div class="btn-group" role="group">
-                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editAssignmentModal"
-                                    onclick="loadAssignmentData({{ назначение['id'] }}, '{{ назначение['сотрудник'] }}', '{{ назначение['техника'] }}')">
-                                Изменить
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteAssignment({{ назначение['id'] }})">
-                                Удалить
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            {% else %}
-                <tr>
-                    <td colspan="8" class="text-center">Нет данных</td>
-                </tr>
+<div class="container-fluid">
+    <h2 class="mb-4">Панель управления</h2>
+    
+    <!-- Уведомления -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'message' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             {% endfor %}
-        </tbody>
-    </table>
-
-    <!-- Модальное окно для прикрепления техники -->
-    <div class="modal fade" id="assignEquipmentModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Прикрепить технику</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        {% endif %}
+    {% endwith %}
+    
+    <div class="row">
+        <!-- Статистика -->
+        <div class="col-md-2 mb-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Всего техники</h5>
+                    <p class="card-text display-4">{{ stats.total_equipment }}</p>
                 </div>
-                <div class="modal-body">
-                    <form id="assignEquipmentForm">
-                        <div class="mb-3">
-                            <label class="form-label">Сотрудник</label>
-                            <select class="form-select" name="сотрудник_id" required>
-                                {% for сотрудник in сотрудники %}
-                                    <option value="{{ сотрудник['id'] }}">{{ сотрудник['имя'] }} {{ сотрудник['фамилия'] }}</option>
-                                {% else %}
-                                    <option disabled>Нет доступных сотрудников</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Техника</label>
-                            <select class="form-select" name="техника_id" required>
-                                {% for техника in техника %}
-                                    <option value="{{ техника['id'] }}">{{ техника['название'] }} ({{ техника['серийный_номер'] }})</option>
-                                {% else %}
-                                    <option disabled>Нет доступной техники</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </form>
+            </div>
+        </div>
+        
+        <div class="col-md-2 mb-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Назначено</h5>
+                    <p class="card-text display-4">{{ stats.assigned_equipment }}</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-primary" onclick="submitAssignEquipment()">Сохранить</button>
+            </div>
+        </div>
+        
+        <div class="col-md-2 mb-4">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Требует обслуживания</h5>
+                    <p class="card-text display-4">{{ stats.maintenance_required }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-2 mb-4">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Неисправная</h5>
+                    <p class="card-text display-4">{{ stats.faulty_equipment }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-2 mb-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Сотрудников</h5>
+                    <p class="card-text display-4">{{ stats.total_employees }}</p>
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Последние назначения -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Последние назначения</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Сотрудник</th>
+                            <th>Техника</th>
+                            <th>Модель</th>
+                            <th>Серийный номер</th>
+                            <th>Дата назначения</th>
+                            <th>Дата возврата</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assignment in recent_assignments %}
+                        <tr>
+                            <td>{{ assignment.employee_name }}</td>
+                            <td>{{ assignment.equipment_name }}</td>
+                            <td>{{ assignment.модель }}</td>
+                            <td>{{ assignment.серийный_номер }}</td>
+                            <td>{{ assignment.дата_назначения }}</td>
+                            <td>{{ assignment.дата_возврата or '-' }}</td>
+                            <td>
+                                <span class="badge {% if assignment.статус == 'активное' %}bg-success
+                                                  {% else %}bg-secondary{% endif %}"
+                                      data-bs-toggle="tooltip"
+                                      data-bs-placement="top"
+                                      title="{% if assignment.статус == 'активное' %}Техника в пользовании
+                                             {% else %}Техника возвращена{% endif %}">
+                                    {{ assignment.статус }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Техника, требующая обслуживания и неисправная техника -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Требует обслуживания</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Название</th>
+                                    <th>Модель</th>
+                                    <th>Состояние</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for equipment in maintenance_required %}
+                                <tr>
+                                    <td>{{ equipment.name }}</td>
+                                    <td>{{ equipment.model }}</td>
+                                    <td>{{ equipment.status }}</td>
+                                    <td>
+                                        <a href="{{ url_for('equipment') }}" class="btn btn-sm btn-primary">
+                                            Подробнее
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Неисправная техника</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Название</th>
+                                    <th>Модель</th>
+                                    <th>Состояние</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for equipment in faulty_equipment %}
+                                <tr>
+                                    <td>{{ equipment.name }}</td>
+                                    <td>{{ equipment.model }}</td>
+                                    <td>{{ equipment.status }}</td>
+                                    <td>
+                                        <a href="{{ url_for('equipment') }}" class="btn btn-sm btn-primary">
+                                            Подробнее
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация подсказок
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+    
+    // Автоматическое скрытие уведомлений через 5 секунд
+    setTimeout(function() {
+        var alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            var bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        });
+    }, 5000);
+});
+</script>
+{% endblock %}
 {% endblock %}
